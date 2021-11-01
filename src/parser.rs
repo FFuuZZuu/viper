@@ -1,32 +1,37 @@
 use crate::ast::*;
+use crate::error::*;
 use crate::lexer::*;
 
 pub struct Parser {
     tokens: Vec<Token>,
     tok_idx: usize,
     current_tok: Token,
+
+    // DEBUG
+    filepath: String,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>, filepath: String) -> Self {
         Parser {
             tokens: tokens.clone(),
             tok_idx: 0,
             current_tok: tokens[0].clone(),
+            filepath: filepath,
         }
     }
 
-    pub fn parse(&mut self) -> Node {
+    pub fn parse(&mut self) -> Result<Node, Error> {
         self.expr()
     }
 
-    fn expr(&mut self) -> Node {
-        let mut left = self.term();
+    fn expr(&mut self) -> Result<Node, Error> {
+        let mut left = self.term()?;
 
         while vec![TokenKind::PLUS, TokenKind::MINUS].contains(&self.current_tok.kind) {
             let op_tok = self.current_tok.clone();
             self.advance();
-            let right = self.term();
+            let right = self.term()?;
             left = Node::BinaryExpr {
                 token: op_tok,
                 left: Box::new(left),
@@ -34,16 +39,16 @@ impl Parser {
             };
         }
 
-        left
+        Ok(left)
     }
 
-    fn term(&mut self) -> Node {
-        let mut left = self.factor();
+    fn term(&mut self) -> Result<Node, Error> {
+        let mut left = self.factor()?;
 
         while vec![TokenKind::MUL, TokenKind::DIV].contains(&self.current_tok.kind) {
             let op_tok = self.current_tok.clone();
             self.advance();
-            let right = self.factor();
+            let right = self.factor()?;
             left = Node::BinaryExpr {
                 token: op_tok,
                 left: Box::new(left),
@@ -51,23 +56,24 @@ impl Parser {
             };
         }
 
-        left
+        Ok(left)
     }
 
-    fn factor(&mut self) -> Node {
+    // TODO: Error on multiple numbers in a row
+    fn factor(&mut self) -> Result<Node, Error> {
         let tok = self.current_tok.clone();
         match self.current_tok.kind {
             TokenKind::INT(..) => {
                 self.advance();
-                Node::Primary(tok)
+                Ok(Node::Primary(tok))
             }
             TokenKind::PLUS | TokenKind::MINUS => {
                 self.advance();
                 let factor = self.factor();
-                Node::UnaryExpr {
+                Ok(Node::UnaryExpr {
                     token: tok,
-                    node: Box::new(factor),
-                }
+                    node: Box::new(factor?),
+                })
             }
             TokenKind::LPAREN => {
                 self.advance();
@@ -76,12 +82,19 @@ impl Parser {
                     self.advance();
                     expr
                 } else {
-                    panic!("expected )");
+                    Err(Error::FoundExpectedError {
+                        found: format!("{:?}", self.current_tok.kind),
+                        expected: ")".to_string(),
+                        filepath: self.current_tok.filepath.clone(),
+                        coord: self.current_tok.coord,
+                    })
                 }
             }
-            _ => {
-                panic!("invalid syntax -> cannot make char into factor");
-            }
+            _ => Err(Error::IllegalSyntaxError {
+                found: format!("{:?}", self.current_tok.kind),
+                filepath: self.current_tok.filepath.clone(),
+                coord: self.current_tok.coord,
+            }),
         }
     }
 

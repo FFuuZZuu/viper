@@ -8,6 +8,7 @@ pub struct Generator {
     file: fs::File,
 }
 
+// TODO: Generator error handling
 impl Generator {
     pub fn new(ast: Node, output: String) -> Self {
         Self {
@@ -31,7 +32,6 @@ impl Generator {
             Node::Primary(x) => self.generate_primary_expression(x),
             Node::UnaryExpr { .. } => self.generate_unary_expression(node),
             Node::BinaryExpr { .. } => self.generate_binary_expression(node),
-            _ => panic!("Invalid node type"),
         }
     }
 
