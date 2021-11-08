@@ -1,4 +1,4 @@
-gcc -static tests/maths.S -o tests/maths
+gcc -static tests/test.S -o tests/test
 echo Assemble: $?
-tests/maths
+tests/test
 echo Run: $?

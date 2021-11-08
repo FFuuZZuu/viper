@@ -6,14 +6,25 @@ use std::fmt;
 // =========================
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum KeywordKind {
+    RETURN,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenKind {
     INT(i32),
+    DECL_NAME(String),
+    KEYWORD(KeywordKind),
     PLUS,
     MINUS,
     MUL,
     DIV,
+    EQUALS,
+    SEMICOLON,
     LPAREN,
     RPAREN,
+    CURLY_LPAREN,
+    CURLY_RPAREN,
     EOF,
 }
 
@@ -44,6 +55,8 @@ impl fmt::Display for Token {
 // =========================
 //  Lexer
 // =========================
+
+const WHITESPACE: [char; 4] = [' ', '\t', '\n', '\0'];
 
 pub struct Lexer {
     input: String,
@@ -79,12 +92,19 @@ impl Lexer {
                     let token = self.num_token();
                     self.tokens.push(token);
                 }
+                'a'..='z' | 'A'..='Z' => {
+                    self.check_keyword();
+                }
                 '+' => self.push_token(TokenKind::PLUS),
                 '-' => self.push_token(TokenKind::MINUS),
                 '*' => self.push_token(TokenKind::MUL),
                 '/' => self.push_token(TokenKind::DIV),
+                '=' => self.push_token(TokenKind::EQUALS),
+                ';' => self.push_token(TokenKind::SEMICOLON),
                 '(' => self.push_token(TokenKind::LPAREN),
                 ')' => self.push_token(TokenKind::RPAREN),
+                '{' => self.push_token(TokenKind::CURLY_LPAREN),
+                '}' => self.push_token(TokenKind::CURLY_RPAREN),
                 '\0' => {
                     self.push_token(TokenKind::EOF);
                     return Ok(self.tokens.clone());
@@ -137,5 +157,27 @@ impl Lexer {
             self.filepath.clone(),
             self.coord,
         )
+    }
+
+    fn check_keyword(&mut self) {
+        let current_word = self.get_current_word();
+        match current_word.as_str() {
+            "return" => self.push_token(TokenKind::KEYWORD(KeywordKind::RETURN)),
+            _ => self.variable_declaration(current_word),
+        }
+    }
+
+    fn get_current_word(&mut self) -> String {
+        let mut ret = String::new();
+
+        while !WHITESPACE.contains(&self.current_char) {
+            ret.push(self.current_char.clone());
+            self.advance();
+        }
+        ret
+    }
+
+    fn variable_declaration(&mut self, name: String) {
+        self.push_token(TokenKind::DECL_NAME(name));
     }
 }

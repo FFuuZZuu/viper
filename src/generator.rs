@@ -17,21 +17,28 @@ impl Generator {
         }
     }
 
-    pub fn generate(&mut self) {
+    pub fn generate_code_block(&mut self) {
         self.emit(".text");
         self.emit(".globl main");
         self.emit("main:");
+        //self.emit("    push %rbp");
+        //self.emit("    mov %rbp, %rsp");
 
-        self.generate_expression(self.ast.clone());
-
-        self.emit("    ret");
+        self.generate_node(self.ast.clone());
     }
 
-    fn generate_expression(&mut self, node: Node) {
+    fn generate_node(&mut self, node: Node) {
         match node {
             Node::Primary(x) => self.generate_primary_expression(x),
             Node::UnaryExpr { .. } => self.generate_unary_expression(node),
             Node::BinaryExpr { .. } => self.generate_binary_expression(node),
+            Node::CompoundExpr { nodes } => self.generate_compound_expression(nodes),
+        }
+    }
+
+    fn generate_compound_expression(&mut self, nodes: Vec<Node>) {
+        for node in nodes {
+            self.generate_node(node);
         }
     }
 
@@ -45,9 +52,10 @@ impl Generator {
     fn generate_unary_expression(&mut self, node: Node) {
         match node {
             Node::UnaryExpr { token, node } => {
-                self.generate_expression(*node);
+                self.generate_node(*node);
 
                 match token.kind {
+                    TokenKind::KEYWORD(KeywordKind::RETURN) => self.emit("    ret"),
                     TokenKind::MINUS => {
                         self.emit("    mov %rax, %rbx");
                         self.emit("    mov $0, %rax");
@@ -63,25 +71,40 @@ impl Generator {
 
     fn generate_binary_expression(&mut self, node: Node) {
         match node {
-            Node::BinaryExpr { token, left, right } => {
-                self.generate_expression(*right);
-                self.emit("    push %rax");
-                self.generate_expression(*left);
-                self.emit("    pop %rdi");
-
-                match token.kind {
-                    TokenKind::PLUS => self.emit("    add %rdi, %rax"),
-                    TokenKind::MINUS => self.emit("    sub %rdi, %rax"),
-                    TokenKind::MUL => self.emit("    imul %rdi, %rax"),
-                    TokenKind::DIV => {
-                        self.emit("    cdq");
-                        self.emit("    idiv %rdi");
-                    }
-                    _ => panic!("unimplemented binary operator"),
+            Node::BinaryExpr { token, left, right } => match token.kind {
+                TokenKind::PLUS | TokenKind::MINUS | TokenKind::MUL | TokenKind::DIV => {
+                    self.generate_maths_expr(token, *left, *right)
                 }
-            }
+                TokenKind::EQUALS => self.generate_declaration(token, *left, *right),
+                _ => panic!("unimplemented binary operator"),
+            },
             _ => panic!("non binary node passed to generate_binary_expression"),
         }
+    }
+
+    fn generate_maths_expr(&mut self, token: Token, left: Node, right: Node) {
+        self.generate_node(right);
+        self.emit("    push %rax");
+        self.generate_node(left);
+        self.emit("    pop %rdi");
+
+        match token.kind {
+            TokenKind::PLUS => self.emit("    add %rdi, %rax"),
+            TokenKind::MINUS => self.emit("    sub %rdi, %rax"),
+            TokenKind::MUL => self.emit("    imul %rdi, %rax"),
+            TokenKind::DIV => {
+                self.emit("    cdq");
+                self.emit("    idiv %rdi");
+            }
+            _ => panic!("unimplemented binary operator"),
+        }
+    }
+
+    // TODO: A large portion of the generator and parser need to be refactored for greater
+    // expandability, such as proper typing of declarations
+    fn generate_declaration(&mut self, token: Token, left: Node, right: Node) {
+        self.generate_node(right);
+        self.emit("    lea -4(%rbp), %rax");
     }
 
     // TODO: replace expect with "?"

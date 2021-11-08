@@ -1,4 +1,3 @@
-use crate::ast;
 use crate::generator;
 use crate::lexer;
 use crate::parser;
@@ -11,8 +10,11 @@ pub fn compile(filepath: String) {
         .trim_end()
         .to_string();
 
-    let output = "tests/maths.S".to_string();
+    let output = "tests/test.S".to_string();
+    println!("Input: {}", input.clone());
+    println!("Output: {}", output.clone());
 
+    println!("Running Lexer:");
     let mut lexer = lexer::Lexer::new(input, filepath.clone());
     let tokens;
     match lexer.tokenise() {
@@ -22,7 +24,11 @@ pub fn compile(filepath: String) {
             exit(1);
         }
     }
+    for token in tokens.clone() {
+        println!("{}", token);
+    }
 
+    println!("Running Parser:");
     let mut parser = parser::Parser::new(tokens, filepath.clone());
     let ast;
     match parser.parse() {
@@ -32,7 +38,10 @@ pub fn compile(filepath: String) {
             exit(1);
         }
     }
+    println!("{}", ast.clone());
 
+    println!("Running generator:");
     let mut generator = generator::Generator::new(ast, output);
-    generator.generate();
+    generator.generate_code_block();
+    println!("Done!");
 }

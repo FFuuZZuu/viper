@@ -22,7 +22,86 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Node, Error> {
-        self.expr()
+        self.code_block()
+    }
+
+    fn code_block(&mut self) -> Result<Node, Error> {
+        self.scope()
+    }
+
+    fn scope(&mut self) -> Result<Node, Error> {
+        let mut nodes: Vec<Node> = Vec::new();
+        if self.current_tok.kind == TokenKind::CURLY_LPAREN {
+            self.advance();
+            while self.current_tok.kind != TokenKind::CURLY_RPAREN {
+                nodes.push(match self.current_tok.kind {
+                    TokenKind::CURLY_LPAREN => self.scope()?,
+                    TokenKind::INT(..) => self.expr()?,
+                    _ => self.stmt()?,
+                });
+                self.advance();
+            }
+            Ok(Node::CompoundExpr { nodes: nodes })
+        } else {
+            return Err(Error::FoundExpectedError {
+                found: format!("{:?}", self.current_tok.kind),
+                expected: format!("{:?}", TokenKind::CURLY_LPAREN),
+                coord: self.current_tok.coord,
+                filepath: self.filepath.clone(),
+            });
+        }
+    }
+
+    fn stmt(&mut self) -> Result<Node, Error> {
+        match self.current_tok.kind.clone() {
+            TokenKind::DECL_NAME(..) => return self.decl(),
+            TokenKind::KEYWORD(KeywordKind::RETURN) => return self.ret(),
+            _ => {
+                return Err(Error::IllegalSyntaxError {
+                    found: format!("{:?}", self.current_tok.kind),
+                    coord: self.current_tok.coord,
+                    filepath: self.filepath.clone(),
+                })
+            }
+        }
+    }
+
+    fn decl(&mut self) -> Result<Node, Error> {
+        let left = Node::Primary(self.current_tok.clone());
+        match self.current_tok.kind.clone() {
+            TokenKind::DECL_NAME(x) => {
+                println!("{}", x);
+                self.advance();
+                if self.current_tok.kind == TokenKind::EQUALS {
+                    let op_tok = self.current_tok.clone();
+                    self.advance();
+                    let right = self.expr()?;
+                    return Ok(Node::BinaryExpr {
+                        token: op_tok,
+                        left: Box::new(left),
+                        right: Box::new(right),
+                    });
+                } else {
+                    return Err(Error::FoundExpectedError {
+                        found: format!("{:?}", self.current_tok.kind.clone()),
+                        expected: format!("{:?}", TokenKind::EQUALS),
+                        coord: self.current_tok.coord,
+                        filepath: self.filepath.clone(),
+                    });
+                }
+            }
+            _ => panic!("decl() called incorrectly"),
+        }
+    }
+
+    fn ret(&mut self) -> Result<Node, Error> {
+        let ret = self.current_tok.clone();
+        self.advance();
+        let expr = self.expr()?;
+        Ok(Node::UnaryExpr {
+            token: ret,
+            node: Box::new(expr),
+        })
     }
 
     fn expr(&mut self) -> Result<Node, Error> {
@@ -65,36 +144,38 @@ impl Parser {
         match self.current_tok.kind {
             TokenKind::INT(..) => {
                 self.advance();
-                Ok(Node::Primary(tok))
+                return Ok(Node::Primary(tok));
             }
             TokenKind::PLUS | TokenKind::MINUS => {
                 self.advance();
                 let factor = self.factor();
-                Ok(Node::UnaryExpr {
+                return Ok(Node::UnaryExpr {
                     token: tok,
                     node: Box::new(factor?),
-                })
+                });
             }
             TokenKind::LPAREN => {
                 self.advance();
                 let expr = self.expr();
                 if self.current_tok.kind == TokenKind::RPAREN {
                     self.advance();
-                    expr
+                    return expr;
                 } else {
-                    Err(Error::FoundExpectedError {
+                    return Err(Error::FoundExpectedError {
                         found: format!("{:?}", self.current_tok.kind),
                         expected: ")".to_string(),
                         filepath: self.current_tok.filepath.clone(),
                         coord: self.current_tok.coord,
-                    })
+                    });
                 }
             }
-            _ => Err(Error::IllegalSyntaxError {
-                found: format!("{:?}", self.current_tok.kind),
-                filepath: self.current_tok.filepath.clone(),
-                coord: self.current_tok.coord,
-            }),
+            _ => {
+                return Err(Error::IllegalSyntaxError {
+                    found: format!("{:?}", self.current_tok.kind),
+                    filepath: self.current_tok.filepath.clone(),
+                    coord: self.current_tok.coord,
+                })
+            }
         }
     }
 
