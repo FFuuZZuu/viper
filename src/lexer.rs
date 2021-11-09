@@ -15,6 +15,7 @@ pub enum TokenKind {
     INT(i32),
     DECL_NAME(String),
     KEYWORD(KeywordKind),
+    COMMENT(String),
     PLUS,
     MINUS,
     MUL,
@@ -98,7 +99,7 @@ impl Lexer {
                 '+' => self.push_token(TokenKind::PLUS),
                 '-' => self.push_token(TokenKind::MINUS),
                 '*' => self.push_token(TokenKind::MUL),
-                '/' => self.push_token(TokenKind::DIV),
+                '/' => self.comment(),
                 '=' => self.push_token(TokenKind::EQUALS),
                 ';' => self.push_token(TokenKind::SEMICOLON),
                 '(' => self.push_token(TokenKind::LPAREN),
@@ -157,6 +158,21 @@ impl Lexer {
             self.filepath.clone(),
             self.coord,
         )
+    }
+
+    fn comment(&mut self) {
+        self.advance();
+        if self.current_char.clone() == '/' {
+            self.advance();
+            let mut comment = String::new();
+            while self.current_char.clone() != '\n' && self.current_char.clone() != '\0' {
+                comment.push(self.current_char.clone());
+                self.advance();
+            }
+            self.push_token(TokenKind::COMMENT(comment));
+        } else {
+            self.push_token(TokenKind::DIV);
+        }
     }
 
     fn check_keyword(&mut self) {

@@ -10,12 +10,15 @@
     * mutable global?
   * block access to local variables outside scope
 * add to docker container
-* comment support
 * functions
 
 ## longer term
 
-* printing
+* io
+  * stdout
+  * stdin
+  * stderr
+  * general file io
 * control flow
   * if / else
   * pattern matching

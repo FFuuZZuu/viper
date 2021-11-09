@@ -45,6 +45,7 @@ impl Generator {
     fn generate_primary_expression(&mut self, token: Token) {
         match token.kind {
             TokenKind::INT(x) => self.emit(format!("    mov ${}, %rax", x).as_str()),
+            TokenKind::COMMENT(x) => self.emit(format!("    #{}", x).as_str()),
             _ => panic!("unimplemented primary expression"),
         }
     }

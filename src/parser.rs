@@ -37,6 +37,7 @@ impl Parser {
                 nodes.push(match self.current_tok.kind {
                     TokenKind::CURLY_LPAREN => self.scope()?,
                     TokenKind::INT(..) => self.expr()?,
+                    TokenKind::COMMENT(..) => self.comment()?,
                     _ => self.stmt()?,
                 });
                 self.advance();
@@ -92,6 +93,11 @@ impl Parser {
             }
             _ => panic!("decl() called incorrectly"),
         }
+    }
+
+    fn comment(&mut self) -> Result<Node, Error> {
+        let token = self.current_tok.clone();
+        Ok(Node::Primary(token))
     }
 
     fn ret(&mut self) -> Result<Node, Error> {

@@ -1,5 +1,10 @@
 {
-    5 * 6 + 5;
-    return 76 - 4 * ( 6 / 3 );
-    47 - 8;
+    // this line does nothing
+    5 - 16 * 14;
+    // this line is what is actually returned
+    return 3 + 76;
+    // these 2 lines also do nothing
+    5 + 7;
+    16 / 4 * 5;
+    // end comment
 }

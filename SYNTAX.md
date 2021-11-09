@@ -12,11 +12,13 @@
 
 ```
 code_block  ->  scope
-scope       ->  "{" (scope | stmt | expr)* "}"
+scope       ->  "{" (scope | stmt | expr | comment)* "}"
 stmt        ->  decl | return
 
 decl        ->  STRING "=" expr ";"
 return      ->  "return" expr ";"
+
+comment     -> "//" STRING
 
 expr        ->  term (("+" | "-") term)* ";"
 term        ->  factor (("*" | "/") factor)*
